@@ -82,7 +82,44 @@ const slotMachineCadences: RoundsCadences = { roundOne: [], roundTwo: [], roundT
  */
 function slotCadence(symbols: Array<SlotCoordinate>): SlotCadence {
   // Magic
-  return [];
+
+  // assigning parameters
+  const config = anticipatorConfig;
+  const columns = symbols.map(({ column }) => column);
+  const colMin = Math.min(...columns);
+  const colMax = Math.max(...columns);
+  const result: number[] = [0];
+  let currentCadence = config.defaultCadence;
+
+  // screening functions
+  const isMinimum = function (index: number) {
+    return index === colMin;
+  }
+  const notLast = function (index: number) {
+    return index >= colMin && index < colMax;
+  }
+  const isAnticipate = function () {
+    return symbols.length >= config.minToAnticipate && symbols.length === config.maxToAnticipate
+  }
+
+  // method to digest the rounds to apply the anticipation values
+  const digest = function (isLast: Boolean, anticipate: Boolean, position: number) {
+    currentCadence = anticipate ? config.anticipateCadence : config.defaultCadence;
+    if (isLast && anticipate) {
+      for (position; result.length < config.columnSize; position++) {
+        result.push(result[position] + currentCadence);
+      }
+      return;
+    }
+    result.push(result[position] + currentCadence);
+  };
+
+  // consumes the columns sending them to be digested, returning the cadence times
+  for (let position = 0; result.length < config.columnSize; position++) {
+    digest(!isAnticipate(), isAnticipate() ? notLast(position) : isMinimum(position), position);
+  }
+
+  return result;
 }
 
 /**
